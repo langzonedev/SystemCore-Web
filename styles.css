@@ -870,7 +870,16 @@ tr:hover td {
 }
 
 .output-panel {
-  min-height: 520px;
+  width: 100%;
+  max-width: 1320px;
+  min-height: clamp(360px, 55vh, 520px);
+  margin-inline: auto;
+}
+
+.output-panel .system-diagram,
+.output-panel .drawing-sheet {
+  width: min(100%, 1120px);
+  margin-inline: auto;
 }
 
 .bom-list {
