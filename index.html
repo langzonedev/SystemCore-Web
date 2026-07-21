@@ -8,7 +8,7 @@
       name="description"
       content="Structured ICT system source data with generated engineering outputs."
     />
-    <link rel="stylesheet" href="styles.css?v=0.5.1" />
+    <link rel="stylesheet" href="styles.css?v=0.5.2" />
   </head>
   <body>
     <div class="app-shell">
@@ -61,6 +61,8 @@
             <button class="icon-button" id="reset-demo" title="Reset workspace" aria-label="Reset workspace">
               <span aria-hidden="true">R</span>
             </button>
+            <input class="hidden" id="import-json-file" type="file" accept=".json,application/json" />
+            <button class="secondary-button" id="import-json" type="button">Import JSON</button>
             <button class="primary-button" id="export-json">Export JSON</button>
           </div>
         </header>
@@ -762,8 +764,8 @@
     </div>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="js/app-config.js"></script>
-    <script src="js/dom-elements.js"></script>
-    <script src="app.js"></script>
+    <script src="js/app-config.js?v=0.5.2"></script>
+    <script src="js/dom-elements.js?v=0.5.2"></script>
+    <script src="app.js?v=0.5.2"></script>
   </body>
 </html>

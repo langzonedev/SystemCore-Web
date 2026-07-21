@@ -3445,6 +3445,62 @@ function exportJson() {
   downloadFile(`${slug(project.name)}-systemcore.json`, JSON.stringify(projectSnapshot(), null, 2), "application/json");
 }
 
+function validateImportedProject(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    throw new Error("That file does not contain a SystemCore project");
+  }
+  const collections = ["rooms", "racks", "devices", "connections"];
+  for (const key of collections) {
+    if (!Array.isArray(input[key])) {
+      throw new Error(`SystemCore project is missing its ${key} list`);
+    }
+    if (input[key].some((item) => !item || typeof item !== "object" || Array.isArray(item))) {
+      throw new Error(`SystemCore project contains an invalid ${key} entry`);
+    }
+  }
+  return normalizeProject(input);
+}
+
+async function importJson(event) {
+  const input = event.target;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  try {
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error("SystemCore JSON files must be smaller than 5 MB");
+    }
+    const imported = validateImportedProject(JSON.parse(await file.text()));
+    const confirmed = window.confirm(
+      `Replace the current workspace with “${imported.name}”?\n\n` +
+        `${imported.rooms.length} rooms, ${imported.racks.length} racks, ` +
+        `${imported.devices.length} devices, and ${imported.connections.length} connections will be imported.`
+    );
+    if (!confirmed) return;
+
+    const previousProject = structuredClone(project);
+    try {
+      project = imported;
+      activeOutput = "diagram";
+      rackViewMode = "front";
+      elevationViewMode = "front";
+      selectedRackId = "";
+      selectedElevationDeviceId = "";
+      outputTemplatePreview = false;
+      render();
+    } catch {
+      project = previousProject;
+      render();
+      throw new Error("The project could not be stored in this browser");
+    }
+    showToast(`Imported ${project.name}`);
+  } catch (error) {
+    showToast(error instanceof SyntaxError ? "That file is not valid JSON" : error.message || "Project import failed");
+  } finally {
+    input.value = "";
+  }
+}
+
 function projectSnapshot() {
   return normalizeProject({
     ...project,
@@ -4168,6 +4224,8 @@ document.getElementById("reset-demo").addEventListener("click", () => {
   showToast("Workspace reset");
 });
 document.getElementById("export-json").addEventListener("click", exportJson);
+document.getElementById("import-json").addEventListener("click", () => document.getElementById("import-json-file").click());
+document.getElementById("import-json-file").addEventListener("change", importJson);
 document.getElementById("download-csv").addEventListener("click", downloadCsv);
 document.getElementById("download-svg").addEventListener("click", downloadSvg);
 document.getElementById("download-vsdx").addEventListener("click", downloadVsdx);

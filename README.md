@@ -16,5 +16,6 @@ GitHub or shared with other users.
 - Clearing browser/site data removes the locally stored project.
 - Data does not automatically synchronize between devices.
 - Use **Export JSON** regularly for backup and transfer.
+- Use **Import JSON** to restore a project, continue editing, and regenerate outputs.
 
 Do not rely on browser storage as the only copy of important project data.
