@@ -1375,7 +1375,7 @@ function buildCombinedElevationSheetSvg(device, frontSvg, rearSvg) {
   const front = frontSvg ? parseSvgContent(frontSvg) : null;
   const rear = rearSvg ? parseSvgContent(rearSvg) : null;
   const width = 1500;
-  const height = 900;
+  const height = 840;
   const panelX = 56;
   const panelW = width - panelX * 2;
   const panelH = 394;
@@ -1404,20 +1404,23 @@ function buildCombinedElevationSheetSvg(device, frontSvg, rearSvg) {
     <svg class="system-diagram" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(device.name)} front and rear elevation">
       <rect width="${width}" height="${height}" fill="#fbfcfa" />
       <text x="44" y="42" font-size="22" font-weight="800" fill="#17211d">${escapeHtml(device.name)} elevations</text>
-      ${renderPanel(front, 72, "Front elevation")}
-      ${renderPanel(rear, 474, "Rear elevation")}
+      ${renderPanel(front, 48, "Front elevation")}
+      ${renderPanel(rear, 442, "Rear elevation")}
     </svg>
   `;
 }
 
 function focusCombinedElevationViewBox(parsed) {
   if (!parsed) return parsed;
+  const trimX = parsed.width >= 1400 ? 210 : parsed.width >= 1200 ? 120 : parsed.width >= 1040 ? 50 : 0;
   const trimTop = parsed.height <= 460 ? 30 : 24;
   const trimBottom = parsed.height <= 460 ? 32 : 24;
+  const width = Math.max(720, parsed.width - trimX * 2);
   const height = Math.max(220, parsed.height - trimTop - trimBottom);
   return {
     ...parsed,
-    viewBox: `0 ${trimTop} ${parsed.width} ${height}`,
+    viewBox: `${trimX} ${trimTop} ${width} ${height}`,
+    width,
     height
   };
 }
