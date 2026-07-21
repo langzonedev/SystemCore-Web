@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SystemCore</title>
+    <meta
+      name="description"
+      content="Structured ICT system source data with generated engineering outputs."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="System navigation">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">SC</div>
+          <div>
+            <h1>SystemCore</h1>
+            <p>ICT design source of truth</p>
+          </div>
+        </div>
+
+        <nav class="nav-stack" aria-label="Sections">
+          <button class="nav-button active" data-section="overview">Overview</button>
+          <button class="nav-button" data-section="structure">Structure</button>
+          <button class="nav-button" data-section="equipment">Equipment</button>
+          <button class="nav-button" data-section="connections">Connections</button>
+          <button class="nav-button" data-section="templates">Templates</button>
+          <button class="nav-button" data-section="shape-standards">Shape Parameters</button>
+          <button class="nav-button" data-section="outputs">Outputs</button>
+        </nav>
+
+        <div class="sidebar-panel">
+          <span class="eyebrow">Project</span>
+          <strong id="project-name">New Project</strong>
+          <dl class="mini-stats">
+            <div>
+              <dt>Devices</dt>
+              <dd id="device-count">0</dd>
+            </div>
+            <div>
+              <dt>Cables</dt>
+              <dd id="cable-count">0</dd>
+            </div>
+            <div>
+              <dt>BOM Lines</dt>
+              <dd id="bom-count">0</dd>
+            </div>
+          </dl>
+        </div>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Engineering workspace</span>
+            <h2>Design inputs in, engineering outputs out</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="reset-demo" title="Reset workspace" aria-label="Reset workspace">
+              <span aria-hidden="true">R</span>
+            </button>
+            <button class="primary-button" id="export-json">Export JSON</button>
+          </div>
+        </header>
+
+        <section class="section active" id="overview-section" aria-labelledby="overview-title">
+          <div class="intro-grid">
+            <div class="intro-copy">
+              <span class="eyebrow">System model</span>
+              <h3 id="overview-title">Capture the system once, generate deliverables when needed.</h3>
+              <p>
+                The app treats equipment, ports, racks, panels, cable routes, and
+                metadata as reusable source data. Output views are generated from
+                that model instead of edited by hand.
+              </p>
+              <p>
+                <strong>Your data stays in this browser.</strong> Nothing is uploaded
+                or shared online. Use Export JSON regularly to back up or transfer
+                your project.
+              </p>
+            </div>
+            <div class="workflow-strip" aria-label="Workflow">
+              <div>
+                <span>1</span>
+                <strong>Intake</strong>
+                <p>Record known device and connection facts.</p>
+              </div>
+              <div>
+                <span>2</span>
+                <strong>Model</strong>
+                <p>Normalize names, ports, racks, parts, and cables.</p>
+              </div>
+              <div>
+                <span>3</span>
+                <strong>Generate</strong>
+                <p>Create diagrams, schedules, lists, and releases.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="metric-card">
+              <span class="metric-label">Input completeness</span>
+              <strong id="completeness">0%</strong>
+              <div class="meter"><span id="completeness-bar"></span></div>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Rooms / racks</span>
+              <strong id="rack-count">0</strong>
+              <p>Devices inherit their placement from controlled room and rack lists.</p>
+            </article>
+            <article class="metric-card">
+              <span class="metric-label">Output packs</span>
+              <strong>5</strong>
+              <p>Block diagram, rack layout, cable schedule, BOM, and revision set.</p>
+            </article>
+          </div>
+
+          <div class="panel split-panel">
+            <div>
+              <span class="eyebrow">Generated preview</span>
+              <h3>Block diagram</h3>
+            </div>
+            <div id="overview-diagram" class="diagram-frame"></div>
+          </div>
+        </section>
+
+        <section class="section" id="structure-section" aria-labelledby="structure-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Project structure</span>
+              <h3 id="structure-title">Rooms and racks</h3>
+            </div>
+          </div>
+
+          <div class="editor-grid structure-grid">
+            <div class="panel form-panel">
+              <label>
+                Project name
+                <input id="project-name-input" placeholder="New Project" />
+              </label>
+              <button class="primary-button" id="save-project-name" type="button">Save project</button>
+
+              <hr class="form-divider" />
+
+              <form id="room-form" class="inline-form">
+                <input type="hidden" id="room-id" />
+                <label>
+                  Room name
+                  <input id="room-name" placeholder="Control Room" required />
+                </label>
+                <label>
+                  Room code
+                  <input id="room-code" placeholder="CR-A" />
+                </label>
+                <button class="secondary-button" type="submit">Save room</button>
+              </form>
+
+              <hr class="form-divider" />
+
+              <form id="rack-form" class="inline-form">
+                <input type="hidden" id="rack-id" />
+                <label>
+                  Room
+                  <select id="rack-room"></select>
+                </label>
+                <label>
+                  Rack name
+                  <input id="rack-name" placeholder="Rack R1" required />
+                </label>
+                <label>
+                  Rack size
+                  <select id="rack-size"></select>
+                </label>
+                <button class="secondary-button" type="submit">Save rack</button>
+              </form>
+            </div>
+
+            <div class="panel list-panel">
+              <div id="structure-list" class="structure-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="equipment-section" aria-labelledby="equipment-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Structured input</span>
+              <h3 id="equipment-title">Equipment register</h3>
+            </div>
+            <button class="secondary-button" id="add-device">Add device</button>
+          </div>
+
+          <div class="editor-grid">
+            <form class="panel form-panel" id="device-form">
+              <input type="hidden" id="device-id" />
+              <label>
+                Device name
+                <input id="device-name" required placeholder="SW-CORE-01" />
+              </label>
+              <label>
+                Category
+                <select id="device-category">
+                  <option>Network Switch</option>
+                  <option>Server</option>
+                  <option>Patch Panel</option>
+                  <option>Display</option>
+                  <option>Media Converter</option>
+                  <option>Storage</option>
+                  <option>Power</option>
+                  <option>Other</option>
+                </select>
+              </label>
+              <div class="field-row">
+                <label>
+                  Room
+                  <select id="device-room" required></select>
+                </label>
+                <label>
+                  Mounting
+                  <select id="device-mount">
+                    <option value="room">Room mounted / no rack</option>
+                    <option value="rack">Rack mounted (uses RU)</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Rack
+                  <select id="device-rack"></select>
+                </label>
+                <label>
+                  Top Rack U
+                  <select id="device-rack-u"></select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Height (RU)
+                  <input id="device-rack-span" min="1" step="1" type="number" value="1" />
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Manufacturer
+                  <input id="device-maker" placeholder="Cisco" />
+                </label>
+                <label>
+                  Model
+                  <input id="device-model" placeholder="C9300-48T" />
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Serial number
+                  <input id="device-serial" placeholder="SN123456" />
+                </label>
+                <label>
+                  Asset tag
+                  <input id="device-asset" placeholder="ICT-0001" />
+                </label>
+              </div>
+              <fieldset class="port-builder">
+                <legend>Ports</legend>
+                <div class="field-row">
+                  <label>
+                    Copper
+                    <input id="port-copper-count" min="0" step="1" type="number" value="0" />
+                  </label>
+                  <label>
+                    Fiber
+                    <input id="port-fiber-count" min="0" step="1" type="number" value="0" />
+                  </label>
+                </div>
+                <div class="field-row">
+                  <label>
+                    Display
+                    <input id="port-display-count" min="0" step="1" type="number" value="0" />
+                  </label>
+                  <label>
+                    Power
+                    <input id="port-power-count" min="0" step="1" type="number" value="0" />
+                  </label>
+                </div>
+                <div class="field-row">
+                  <label>
+                    Copper view
+                    <select id="port-copper-face">
+                      <option>Front</option>
+                      <option>Rear</option>
+                      <option>Unspecified</option>
+                    </select>
+                  </label>
+                  <label>
+                    Fiber view
+                    <select id="port-fiber-face">
+                      <option>Front</option>
+                      <option>Rear</option>
+                      <option>Unspecified</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="field-row">
+                  <label>
+                    Display view
+                    <select id="port-display-face">
+                      <option>Front</option>
+                      <option>Rear</option>
+                      <option>Unspecified</option>
+                    </select>
+                  </label>
+                  <label>
+                    Power view
+                    <select id="port-power-face">
+                      <option>Front</option>
+                      <option>Rear</option>
+                      <option>Unspecified</option>
+                    </select>
+                  </label>
+                </div>
+                <p id="port-preview" class="port-preview">No ports generated yet.</p>
+              </fieldset>
+              <label>
+                Notes
+                <textarea id="device-notes" rows="4" placeholder="Power, firmware, licensing, IO, display capability, or installation notes"></textarea>
+              </label>
+              <button class="primary-button" type="submit">Save device</button>
+            </form>
+
+            <div class="panel list-panel">
+              <div class="filter-row">
+                <input id="device-search" placeholder="Search devices, serials, ports, locations" />
+                <select id="category-filter" aria-label="Filter by category">
+                  <option value="All">All categories</option>
+                </select>
+              </div>
+              <div id="device-list" class="device-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="connections-section" aria-labelledby="connections-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Connectivity source data</span>
+              <h3 id="connections-title">Cable and patch schedule</h3>
+            </div>
+            <button class="secondary-button" id="add-connection">Add connection</button>
+          </div>
+
+          <div class="editor-grid">
+            <form class="panel form-panel" id="connection-form">
+              <input type="hidden" id="connection-id" />
+              <div class="field-row">
+                <label>
+                  From device
+                  <select id="from-device"></select>
+                </label>
+                <label>
+                  From port
+                  <select id="from-port"></select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  To device
+                  <select id="to-device"></select>
+                </label>
+                <label>
+                  To port
+                  <select id="to-port"></select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Cable type
+                  <select id="cable-type">
+                    <option>Cat6A U/FTP</option>
+                    <option>Cat6 UTP</option>
+                    <option>OM4 LC-LC</option>
+                    <option>HDMI 2.1</option>
+                    <option>SDI Coax</option>
+                    <option>IEC Power</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label>
+                  Conductor
+                  <select id="conductor-type">
+                    <option>Copper</option>
+                    <option>Fiber</option>
+                    <option>Coax</option>
+                    <option>Power</option>
+                    <option>Hybrid</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  From face
+                  <select id="from-face">
+                    <option>Front</option>
+                    <option>Rear</option>
+                    <option>Unspecified</option>
+                  </select>
+                </label>
+                <label>
+                  To face
+                  <select id="to-face">
+                    <option>Front</option>
+                    <option>Rear</option>
+                    <option>Unspecified</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Length
+                  <input id="cable-length" placeholder="12 m" />
+                </label>
+                <label>
+                  Label
+                  <input id="cable-label" placeholder="CBL-R1-001" />
+                </label>
+              </div>
+              <label>
+                Route
+                <input id="cable-route" placeholder="R1 PP-01 A01 > tray A > R2 U22" />
+              </label>
+              <label>
+                Status
+                <select id="connection-status">
+                  <option>Designed</option>
+                  <option>Issued for build</option>
+                  <option>Installed</option>
+                  <option>Tested</option>
+                </select>
+              </label>
+              <button class="primary-button" type="submit">Save connection</button>
+            </form>
+
+            <div class="panel table-panel">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Label</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="connection-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="templates-section" aria-labelledby="templates-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Company output standard</span>
+              <h3 id="templates-title">Drawing template</h3>
+            </div>
+          </div>
+
+          <div class="editor-grid template-grid">
+            <form class="panel form-panel" id="template-form">
+              <label>
+                Template source
+                <select id="template-source">
+                  <option value="built-in">SystemCore template</option>
+                  <option value="custom">Custom Visio SVG</option>
+                </select>
+              </label>
+              <div class="custom-template-fields hidden" id="custom-template-fields">
+                <label>
+                  Visio template export
+                  <input id="custom-template-file" type="file" accept=".svg,image/svg+xml" />
+                </label>
+                <div class="imported-template-row">
+                  <span id="custom-template-name">No template imported</span>
+                  <button class="secondary-button compact-button" id="clear-custom-template" type="button">Remove</button>
+                </div>
+                <fieldset class="template-region-fields">
+                  <legend>Drawing region margins (%)</legend>
+                  <div class="field-row template-margin-grid">
+                    <label>
+                      Top
+                      <input id="template-margin-top" type="number" min="0" max="35" step="1" value="5" />
+                    </label>
+                    <label>
+                      Right
+                      <input id="template-margin-right" type="number" min="0" max="35" step="1" value="5" />
+                    </label>
+                    <label>
+                      Bottom
+                      <input id="template-margin-bottom" type="number" min="0" max="35" step="1" value="18" />
+                    </label>
+                    <label>
+                      Left
+                      <input id="template-margin-left" type="number" min="0" max="35" step="1" value="5" />
+                    </label>
+                  </div>
+                </fieldset>
+              </div>
+              <div class="field-row">
+                <label>
+                  Sheet size
+                  <select id="template-sheet-size">
+                    <option>A3</option>
+                    <option>A4</option>
+                  </select>
+                </label>
+                <label>
+                  Orientation
+                  <select id="template-orientation">
+                    <option>Landscape</option>
+                    <option>Portrait</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Company
+                  <input id="template-company" placeholder="Company name" />
+                </label>
+                <label>
+                  Logo / mark text
+                  <input id="template-logo-text" placeholder="ACME" />
+                </label>
+              </div>
+              <label>
+                Drawing title
+                <input id="template-title" placeholder="ICT system block diagram" />
+              </label>
+              <label>
+                Drawing subtitle
+                <input id="template-subtitle" placeholder="Generated from SystemCore source data" />
+              </label>
+              <div class="field-row">
+                <label>
+                  Drawing number
+                  <input id="template-drawing-number" placeholder="ICT-DRG-001" />
+                </label>
+                <label>
+                  Revision
+                  <input id="template-revision" placeholder="1.0" />
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Release status
+                  <select id="template-release-status">
+                    <option>Draft</option>
+                    <option>Issued for review</option>
+                    <option>Issued for construction</option>
+                    <option>As built</option>
+                  </select>
+                </label>
+                <label>
+                  Sensitivity
+                  <select id="template-sensitivity">
+                    <option>Internal</option>
+                    <option>Confidential</option>
+                    <option>Commercial in confidence</option>
+                    <option>Public</option>
+                  </select>
+                </label>
+              </div>
+              <div class="field-row">
+                <label>
+                  Drawn by
+                  <input id="template-drawn-by" placeholder="Name" />
+                </label>
+                <label>
+                  Checked by
+                  <input id="template-checked-by" placeholder="Name" />
+                </label>
+                <label>
+                  Approved by
+                  <input id="template-approved-by" placeholder="Name" />
+                </label>
+              </div>
+              <label>
+                Copyright / disclaimer
+                <textarea id="template-copyright" rows="2" placeholder="Copyright notice, ownership statement, or controlled document warning"></textarea>
+              </label>
+              <label>
+                Drawing notes
+                <textarea id="template-notes" rows="4" placeholder="One note per line"></textarea>
+              </label>
+              <button class="primary-button" type="submit">Save template</button>
+            </form>
+
+            <div class="panel template-preview-panel">
+              <span class="eyebrow">Live sheet preview</span>
+              <div id="template-preview" class="template-preview"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="shape-standards-section" aria-labelledby="shape-standards-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Generated drawing styles</span>
+              <h3 id="shape-standards-title">Shape parameters</h3>
+            </div>
+          </div>
+
+          <div class="editor-grid shape-standards-grid">
+            <form class="panel form-panel style-standards-panel" id="shape-standards-form">
+              <div>
+                <h4>Global output standards</h4>
+                <p class="muted">Set global output styles once. Device and cable entry stays focused on source data.</p>
+              </div>
+
+              <fieldset>
+                <legend>Device shapes</legend>
+                <div class="standards-grid">
+                  <div class="standard-row standard-row-head">
+                    <span>Device type</span>
+                    <span>Colour</span>
+                    <span>Line</span>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Network Switch</strong>
+                    <select data-device-style-colour="Network Switch"></select>
+                    <select data-device-style-weight="Network Switch"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Server</strong>
+                    <select data-device-style-colour="Server"></select>
+                    <select data-device-style-weight="Server"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Patch Panel</strong>
+                    <select data-device-style-colour="Patch Panel"></select>
+                    <select data-device-style-weight="Patch Panel"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Display</strong>
+                    <select data-device-style-colour="Display"></select>
+                    <select data-device-style-weight="Display"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Media Converter</strong>
+                    <select data-device-style-colour="Media Converter"></select>
+                    <select data-device-style-weight="Media Converter"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Storage</strong>
+                    <select data-device-style-colour="Storage"></select>
+                    <select data-device-style-weight="Storage"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Power</strong>
+                    <select data-device-style-colour="Power"></select>
+                    <select data-device-style-weight="Power"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Other</strong>
+                    <select data-device-style-colour="Other"></select>
+                    <select data-device-style-weight="Other"></select>
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend>Cable lines</legend>
+                <div class="standards-grid">
+                  <div class="standard-row standard-row-head">
+                    <span>Cable family</span>
+                    <span>Colour</span>
+                    <span>Line</span>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Copper</strong>
+                    <select data-cable-style-colour="copper"></select>
+                    <select data-cable-style-weight="copper"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Fiber</strong>
+                    <select data-cable-style-colour="fiber"></select>
+                    <select data-cable-style-weight="fiber"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Display</strong>
+                    <select data-cable-style-colour="display"></select>
+                    <select data-cable-style-weight="display"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Coax</strong>
+                    <select data-cable-style-colour="coax"></select>
+                    <select data-cable-style-weight="coax"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Power</strong>
+                    <select data-cable-style-colour="power"></select>
+                    <select data-cable-style-weight="power"></select>
+                  </div>
+                  <div class="standard-row">
+                    <strong>Hybrid</strong>
+                    <select data-cable-style-colour="hybrid"></select>
+                    <select data-cable-style-weight="hybrid"></select>
+                  </div>
+                </div>
+              </fieldset>
+              <button class="primary-button" type="submit">Save shape parameters</button>
+            </form>
+
+            <div class="panel standards-preview-panel">
+              <span class="eyebrow">Live style preview</span>
+              <div id="shape-standards-preview" class="shape-standards-preview"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section" id="outputs-section" aria-labelledby="outputs-title">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">Generated deliverables</span>
+              <h3 id="outputs-title">Choose an engineering output</h3>
+            </div>
+            <div class="segmented" role="tablist" aria-label="Output type">
+              <button class="active" data-output="diagram">Diagram</button>
+              <button data-output="rack">Rack</button>
+              <button data-output="elevations">Elevations</button>
+              <button data-output="cables">Cables</button>
+              <button data-output="bom">BOM</button>
+              <button data-output="version">Version</button>
+            </div>
+          </div>
+
+          <div class="output-toolbar">
+            <div class="output-selection-control" id="output-selection-control"></div>
+            <div class="segmented rack-view-control" id="rack-view-control" role="tablist" aria-label="Rack view">
+              <button class="active" data-rack-view="front">Front</button>
+              <button data-rack-view="rear">Rear</button>
+            </div>
+            <label class="template-toggle">
+              <input type="checkbox" id="template-output-toggle" />
+              Template preview
+            </label>
+            <button class="secondary-button" id="download-csv">Download CSV</button>
+            <button class="secondary-button" id="download-svg">Download SVG</button>
+            <button class="secondary-button" id="download-vsdx">Download VSDX</button>
+            <button
+              class="secondary-button hidden"
+              id="realign-diagram"
+              type="button"
+              title="Show the next-best ranked automatic arrangement"
+            >Realign</button>
+            <button class="secondary-button" id="print-output">Print / PDF</button>
+          </div>
+
+          <div class="panel output-panel" id="output-panel"></div>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="js/app-config.js"></script>
+    <script src="js/dom-elements.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
