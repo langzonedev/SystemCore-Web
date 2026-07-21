@@ -1008,7 +1008,7 @@ function buildDiagramSvg(options = {}) {
   const layout = buildDiagramLayout();
   if (!layout.positions.length) {
     return `
-      <svg class="system-diagram" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="Empty system block diagram">
+      <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="0 0 ${layout.width} ${layout.height}" role="img" aria-label="Empty system block diagram">
         <rect width="${layout.width}" height="${layout.height}" fill="#fbfcfa" />
         <text x="34" y="34" font-size="18" font-weight="800" fill="#17211d">${escapeHtml(project.name)} block diagram</text>
         <text x="34" y="92" font-size="15" fill="#65726c">No devices yet. Add rooms, racks, and equipment to generate this diagram.</text>
@@ -1080,7 +1080,7 @@ function buildDiagramSvg(options = {}) {
   const viewBox = trimToContent ? diagramContentViewBox(layout) : `0 0 ${layout.width} ${layout.height}`;
 
   return `
-    <svg class="system-diagram" viewBox="${viewBox}" role="img" aria-label="Generated system block diagram">
+    <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="${viewBox}" role="img" aria-label="Generated system block diagram">
       <rect width="${layout.width}" height="${layout.height}" fill="#fbfcfa" />
       <text x="34" y="34" font-size="18" font-weight="800" fill="#17211d">${escapeHtml(project.name)} block diagram</text>
       ${cablePathSvg}
@@ -1115,7 +1115,7 @@ function diagramContentViewBox(layout) {
 
 function buildTemplatePlaceholderSvg() {
   return `
-    <svg class="system-diagram" viewBox="0 0 900 430" role="img" aria-label="Template drawing area preview">
+    <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="0 0 900 430" role="img" aria-label="Template drawing area preview">
       <rect width="900" height="430" fill="#fbfcfa" />
       <text x="450" y="188" font-size="28" font-weight="800" fill="#d6ddd8" text-anchor="middle">Generated drawing area</text>
       <text x="450" y="224" font-size="15" fill="#8b9791" text-anchor="middle">Diagrams, rack layouts, elevations, schedules, and BOMs fit inside this controlled sheet</text>
@@ -1170,7 +1170,7 @@ function buildSheetSvg(contentSvg, drawingType = "Drawing") {
   const generatedDate = new Date(project.updated || Date.now()).toLocaleDateString();
 
   return `
-    <svg class="drawing-sheet" viewBox="0 0 ${sheet.width} ${sheet.height}" role="img" aria-label="${escapeHtml(template.title)} drawing sheet">
+    <svg xmlns="http://www.w3.org/2000/svg" class="drawing-sheet" viewBox="0 0 ${sheet.width} ${sheet.height}" role="img" aria-label="${escapeHtml(template.title)} drawing sheet">
       <rect width="${sheet.width}" height="${sheet.height}" fill="#f7f8f6" />
       <rect x="${margin}" y="${margin}" width="${sheet.width - margin * 2}" height="${sheet.height - margin * 2}" fill="#ffffff" stroke="#1f2924" stroke-width="1.4" />
       <rect x="${margin + 12}" y="${margin + 12}" width="${sheet.width - margin * 2 - 24}" height="${sheet.height - margin * 2 - 24}" fill="none" stroke="#707b75" stroke-width="0.8" />
@@ -1202,7 +1202,7 @@ function buildCustomTemplateSheetSvg(contentSvg, template) {
   const contentY = drawingY + (drawingH - contentH) / 2;
 
   return `
-    <svg class="drawing-sheet" viewBox="0 0 ${sheet.width} ${sheet.height}" role="img" aria-label="${escapeHtml(template.title)} custom drawing sheet">
+    <svg xmlns="http://www.w3.org/2000/svg" class="drawing-sheet" viewBox="0 0 ${sheet.width} ${sheet.height}" role="img" aria-label="${escapeHtml(template.title)} custom drawing sheet">
       <rect width="${sheet.width}" height="${sheet.height}" fill="#ffffff" />
       <svg x="0" y="0" width="${sheet.width}" height="${sheet.height}" viewBox="${background.viewBox}" preserveAspectRatio="none">
         ${background.inner}
@@ -1572,13 +1572,14 @@ function buildDiagramLayoutCandidate(layoutVariant) {
     const pairTotal = pairTotals.get(pairKey) || 1;
     const sameColumn = Math.abs(from.x - to.x) < 10;
     const facingDevices = !sameColumn && startDirection !== endDirection;
+    const routeLaneIndex = sameColumn ? Math.min(laneIndex, 4) : laneIndex;
     const pairOffset = facingDevices ? 0 : (pairIndex - (pairTotal - 1) / 2) * 42;
     const startLeadLength = facingDevices ? 16 : 62 + startLaneIndex * 22;
     const endLeadLength = facingDevices ? 16 : 62 + endLaneIndex * 22;
     const startLead = { x: start.x + startDirection * startLeadLength, y: start.y };
     const endLead = { x: end.x + endDirection * endLeadLength, y: end.y };
     const midX = sameColumn
-      ? start.x + startDirection * (120 + laneIndex * 58)
+      ? start.x + startDirection * (120 + routeLaneIndex * 58)
       : (startLead.x + endLead.x) / 2 + pairOffset + (startLaneIndex - endLaneIndex) * 12;
     const obstacles = positions.filter((position) => ![connection.fromDevice, connection.toDevice].includes(position.id));
     const segments = buildDiagramRouteSegments({
@@ -1587,7 +1588,7 @@ function buildDiagramLayoutCandidate(layoutVariant) {
       startLead,
       endLead,
       midX,
-      laneIndex,
+      laneIndex: routeLaneIndex,
       sameColumn,
       facingDevices,
       previousSegments: routedSegments,
@@ -2295,26 +2296,28 @@ function boxesOverlapWithMargin(first, second, margin = 0) {
 function buildDiagramPortUsage(connections = project.connections) {
   const usage = new Map();
   connections.forEach((connection) => {
-    addPortUsage(usage, connection.fromDevice, connection.fromPort);
-    addPortUsage(usage, connection.toDevice, connection.toPort);
+    addPortUsage(usage, connection.fromDevice, connection.fromPort, connection.fromFace);
+    addPortUsage(usage, connection.toDevice, connection.toPort, connection.toFace);
   });
   return usage;
 }
 
-function addPortUsage(usage, deviceId, port) {
+function addPortUsage(usage, deviceId, port, face = "Unspecified") {
   if (!usage.has(deviceId)) usage.set(deviceId, []);
-  if (!usage.get(deviceId).includes(port)) usage.get(deviceId).push(port);
+  const key = getDevice(deviceId)?.category === "Patch Panel" ? `${port}::${normalizeFace(face)}` : port;
+  if (!usage.get(deviceId).includes(key)) usage.get(deviceId).push(key);
 }
 
 function buildDiagramEndpoints(connections, positionMap) {
   const groups = new Map();
   const portEntries = new Map();
+  const panelOrientations = buildPatchPanelOrientations(connections, positionMap);
   connections.forEach((connection) => {
     const from = positionMap.get(connection.fromDevice);
     const to = positionMap.get(connection.toDevice);
-    const sides = connectionSides(from, to, connection);
-    addEndpointGroup(groups, portEntries, connection.fromDevice, connection.fromPort, sides.fromSide, `${connection.id}:from`);
-    addEndpointGroup(groups, portEntries, connection.toDevice, connection.toPort, sides.toSide, `${connection.id}:to`);
+    const sides = connectionSides(from, to, connection, panelOrientations);
+    addEndpointGroup(groups, portEntries, connection.fromDevice, connection.fromPort, connection.fromFace, sides.fromSide, `${connection.id}:from`);
+    addEndpointGroup(groups, portEntries, connection.toDevice, connection.toPort, connection.toFace, sides.toSide, `${connection.id}:to`);
   });
 
   const endpointPoints = new Map();
@@ -2322,15 +2325,21 @@ function buildDiagramEndpoints(connections, positionMap) {
   groups.forEach((entries, groupKey) => {
     const [deviceId, side] = groupKey.split(":");
     const position = positionMap.get(deviceId);
-    entries.sort((first, second) => portCompare(first.port, second.port));
+    entries.sort((first, second) => portCompare(first.port, second.port) || first.face.localeCompare(second.face));
     entries.forEach((entry, index) => {
       const point = anchorPoint(position, side, index, entries.length);
-      const labelWidth = Math.max(44, entry.port.length * 6.4 + 14);
+      const device = getDevice(deviceId);
+      const displayPort = device?.category === "Patch Panel"
+        ? `${entry.port} ${entry.face === "Rear" ? "back" : "front"}`
+        : entry.port;
+      const labelWidth = Math.max(44, displayPort.length * 6.4 + 14);
       const labelHeight = 18;
       const isRightSide = side === "right";
       const portMarker = {
         ...point,
-        port: entry.port,
+        port: displayPort,
+        rawPort: entry.port,
+        face: entry.face,
         side,
         labelWidth,
         labelHeight,
@@ -2342,35 +2351,40 @@ function buildDiagramEndpoints(connections, positionMap) {
       };
       if (!portsByDevice.has(deviceId)) portsByDevice.set(deviceId, []);
       portsByDevice.get(deviceId).push(portMarker);
-      entry.endpointIds.forEach((endpointId) => endpointPoints.set(endpointId, { ...point, side, port: entry.port }));
+      entry.endpointIds.forEach((endpointId) => endpointPoints.set(endpointId, { ...point, side, port: entry.port, face: entry.face }));
     });
   });
   return { endpointPoints, portsByDevice };
 }
 
-function addEndpointGroup(groups, portEntries, deviceId, port, side, endpointId) {
+function addEndpointGroup(groups, portEntries, deviceId, port, face, side, endpointId) {
   const key = `${deviceId}:${side}`;
   if (!groups.has(key)) groups.set(key, []);
-  const portKey = `${key}:${port}`;
+  const normalizedFace = normalizeFace(face);
+  const faceKey = getDevice(deviceId)?.category === "Patch Panel" ? normalizedFace : "";
+  const portKey = `${key}:${port}:${faceKey}`;
   if (!portEntries.has(portKey)) {
-    const entry = { port, endpointIds: [] };
+    const entry = { port, face: normalizedFace, endpointIds: [] };
     portEntries.set(portKey, entry);
     groups.get(key).push(entry);
   }
   portEntries.get(portKey).endpointIds.push(endpointId);
 }
 
-function connectionSides(from, to, connection = null) {
-  const geometric = geometricConnectionSides(from, to);
+function connectionSides(from, to, connection = null, panelOrientations = new Map()) {
+  const geometric = geometricConnectionSides(from, to, connection);
   return {
-    fromSide: preferredEndpointSide(connection?.fromDevice, connection?.fromFace, geometric.fromSide),
-    toSide: preferredEndpointSide(connection?.toDevice, connection?.toFace, geometric.toSide)
+    fromSide: preferredEndpointSide(connection?.fromDevice, connection?.fromFace, geometric.fromSide, panelOrientations),
+    toSide: preferredEndpointSide(connection?.toDevice, connection?.toFace, geometric.toSide, panelOrientations)
   };
 }
 
-function geometricConnectionSides(from, to) {
+function geometricConnectionSides(from, to, connection = null) {
   if (Math.abs(from.x - to.x) < 10) {
-    const side = from.x < 300 ? "right" : "left";
+    const powerRoute = cableTypeFamily(connection?.cableType) === "power" || [connection?.fromDevice, connection?.toDevice].some((deviceId) => getDevice(deviceId)?.category === "Power");
+    const side = powerRoute
+      ? from.columnIndex === 0 ? "left" : "right"
+      : from.columnIndex === 0 ? "right" : "left";
     return { fromSide: side, toSide: side };
   }
   return {
@@ -2379,12 +2393,55 @@ function geometricConnectionSides(from, to) {
   };
 }
 
-function preferredEndpointSide(deviceId, face, fallbackSide) {
+function preferredEndpointSide(deviceId, face, fallbackSide, panelOrientations = new Map()) {
   const device = getDevice(deviceId);
   if (device?.category !== "Patch Panel") return fallbackSide;
   const normalizedFace = normalizeFace(face);
-  if (normalizedFace === "Rear") return fallbackSide === "right" ? "left" : "right";
+  const orientation = panelOrientations.get(deviceId);
+  if (!orientation) return fallbackSide;
+  if (normalizedFace === "Rear") return orientation.rearSide;
+  if (normalizedFace === "Front") return orientation.frontSide;
   return fallbackSide;
+}
+
+function buildPatchPanelOrientations(connections, positionMap) {
+  const orientationScores = new Map();
+  connections.forEach((connection) => {
+    [
+      { deviceId: connection.fromDevice, face: connection.fromFace, otherId: connection.toDevice },
+      { deviceId: connection.toDevice, face: connection.toFace, otherId: connection.fromDevice }
+    ].forEach((endpoint) => {
+      if (getDevice(endpoint.deviceId)?.category !== "Patch Panel") return;
+      const position = positionMap.get(endpoint.deviceId);
+      const other = positionMap.get(endpoint.otherId);
+      if (!position || !other) return;
+      const face = normalizeFace(endpoint.face);
+      if (!orientationScores.has(endpoint.deviceId)) orientationScores.set(endpoint.deviceId, { Front: 0, Rear: 0, frontCount: 0, rearCount: 0 });
+      const scores = orientationScores.get(endpoint.deviceId);
+      const horizontalDirection = Math.abs(other.x - position.x) < 10 ? 0 : other.x > position.x ? 1 : -1;
+      if (face === "Rear") {
+        scores.Rear += horizontalDirection;
+        scores.rearCount += 1;
+      } else if (face === "Front") {
+        scores.Front += horizontalDirection;
+        scores.frontCount += 1;
+      }
+    });
+  });
+
+  const orientations = new Map();
+  orientationScores.forEach((scores, deviceId) => {
+    if (!scores.rearCount) return;
+    let rearSide;
+    if (scores.Rear) rearSide = scores.Rear > 0 ? "right" : "left";
+    else if (scores.Front) rearSide = scores.Front > 0 ? "left" : "right";
+    else rearSide = (positionMap.get(deviceId)?.columnIndex || 0) === 0 ? "right" : "left";
+    orientations.set(deviceId, {
+      rearSide,
+      frontSide: rearSide === "right" ? "left" : "right"
+    });
+  });
+  return orientations;
 }
 
 function sideDirection(side) {
