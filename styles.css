@@ -876,6 +876,16 @@ tr:hover td {
   margin-inline: auto;
 }
 
+.output-capacity-notice {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #d8b56b;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #5c4212;
+  line-height: 1.45;
+}
+
 .output-panel .system-diagram,
 .output-panel .drawing-sheet {
   width: min(100%, 1120px);

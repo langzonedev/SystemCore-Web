@@ -806,11 +806,12 @@ function renderDiagram() {
 }
 
 function realignDiagram() {
-  project.diagramLayoutRank = ((Number(project.diagramLayoutRank) || 0) + 1) % 6;
+  const optionCount = diagramLayoutOptionCount();
+  project.diagramLayoutRank = ((Number(project.diagramLayoutRank) || 0) + 1) % optionCount;
   renderDiagram();
   if (activeOutput === "diagram") renderOutput();
   saveProject();
-  showToast(project.diagramLayoutRank === 0 ? "Best automatic diagram restored" : `Showing ranked diagram option ${project.diagramLayoutRank + 1} of 6`);
+  showToast(project.diagramLayoutRank === 0 ? "Best automatic diagram restored" : `Showing ranked diagram option ${project.diagramLayoutRank + 1} of ${optionCount}`);
 }
 
 function resetDiagramOptimization() {
@@ -928,15 +929,15 @@ function buildShapeStandardsPreview(standards) {
 function renderOutput() {
   els.outputSelectionControl.innerHTML = buildOutputSelectionControl();
   els.rackViewControl.classList.toggle("hidden", activeOutput !== "rack");
-  els.realignDiagram.classList.toggle("hidden", activeOutput !== "diagram");
+  els.realignDiagram.classList.toggle("hidden", activeOutput !== "diagram" || diagramLayoutOptionCount() < 2);
   els.rackViewButtons.forEach((button) => button.classList.toggle("active", button.dataset.rackView === rackViewMode));
   els.templateOutputToggle.checked = outputTemplatePreview;
   if (outputTemplatePreview) {
-    els.outputPanel.innerHTML = `<div class="sheet-frame">${buildActiveOutputSheetSvg()}</div>`;
+    els.outputPanel.innerHTML = `${buildDiagramCapacityNotice()}<div class="sheet-frame">${buildActiveOutputSheetSvg()}</div>`;
     return;
   }
   if (activeOutput === "diagram") {
-    els.outputPanel.innerHTML = `<div class="diagram-frame">${buildDiagramSvg()}</div>`;
+    els.outputPanel.innerHTML = `${buildDiagramCapacityNotice()}<div class="diagram-frame">${buildDiagramSvg()}</div>`;
   }
   if (activeOutput === "rack") {
     els.outputPanel.innerHTML = buildRackLayout();
@@ -1480,8 +1481,9 @@ function parseSvgContent(svg) {
 }
 
 function buildDiagramLayout() {
-  const requestedRank = Math.max(0, Math.min(5, Number(project.diagramLayoutRank) || 0));
-  const candidates = Array.from({ length: 6 }, (_, layoutVariant) => {
+  const optionCount = diagramLayoutOptionCount();
+  const requestedRank = Math.max(0, Math.min(optionCount - 1, Number(project.diagramLayoutRank) || 0));
+  const candidates = Array.from({ length: optionCount }, (_, layoutVariant) => {
     const layout = buildDiagramLayoutCandidate(layoutVariant);
     return {
       ...layout,
@@ -1490,6 +1492,18 @@ function buildDiagramLayout() {
     };
   }).sort((first, second) => first.qualityScore - second.qualityScore || first.layoutVariant - second.layoutVariant);
   return candidates[Math.min(requestedRank, candidates.length - 1)];
+}
+
+function drawableDiagramConnectionCount() {
+  const deviceIds = new Set(project.devices.filter(isDrawableDiagramDevice).map((device) => device.id));
+  return project.connections.filter((connection) => deviceIds.has(connection.fromDevice) && deviceIds.has(connection.toDevice)).length;
+}
+
+function diagramLayoutOptionCount() {
+  const connectionCount = drawableDiagramConnectionCount();
+  if (connectionCount > 160) return 1;
+  if (connectionCount > 80) return 3;
+  return 6;
 }
 
 function buildDiagramLayoutCandidate(layoutVariant) {
@@ -1522,6 +1536,7 @@ function buildDiagramLayoutCandidate(layoutVariant) {
   const validConnections = drawableConnections.filter((connection) => {
     return positionMap.has(connection.fromDevice) && positionMap.has(connection.toDevice);
   });
+  const fastRouting = validConnections.length > 120;
   relaxDiagramPositions(positions, validConnections, columns.hubId, top);
   const contentHeight = Math.max(...positions.map((position) => position.y + position.h), top) + 46;
   const height = Math.max(420, contentHeight, Math.ceil(width / Math.SQRT2));
@@ -1576,7 +1591,8 @@ function buildDiagramLayoutCandidate(layoutVariant) {
       sameColumn,
       facingDevices,
       previousSegments: routedSegments,
-      obstacles
+      obstacles,
+      fastMode: fastRouting
     });
     const path = buildJumpPath(segments, routedSegments);
     routedSegments.push(...segments);
@@ -1599,7 +1615,7 @@ function buildDiagramLayoutCandidate(layoutVariant) {
     const labelWidth = Math.max(34, route.connection.label.length * 7 + 14);
     const otherCableSegments = routedSegments.filter((segment) => !route.segments.includes(segment));
     const preferredSide = route.start.side === "left" || route.start.side === "bottom" ? -1 : 1;
-    const label = placeRouteLabel(route.segments, labelWidth, labelBoxes, otherCableSegments, preferredSide, { width, height }, nodeBoxes);
+    const label = placeRouteLabel(route.segments, labelWidth, labelBoxes, otherCableSegments, preferredSide, { width, height }, nodeBoxes, fastRouting);
     return {
       ...route,
       labelX: label.x,
@@ -1971,20 +1987,20 @@ function packDiagramColumns(positions, top, minGap) {
   });
 }
 
-function buildDiagramRouteSegments({ start, end, startLead, endLead, midX, laneIndex, sameColumn, facingDevices, previousSegments, obstacles = [] }) {
+function buildDiagramRouteSegments({ start, end, startLead, endLead, midX, laneIndex, sameColumn, facingDevices, previousSegments, obstacles = [], fastMode = false }) {
   const verticalDelta = end.y - start.y;
   if (facingDevices) {
     return chooseBestFacingRoute(start, end, previousSegments, obstacles);
   }
 
   if (sameColumn) {
-    const xOffsets = [0, 58, -58, 116, -116, 174, -174];
+    const xOffsets = fastMode ? [0, 116, -116] : [0, 58, -58, 116, -116, 174, -174];
     const candidates = xOffsets.map((offset) => buildRouteSegments(start, { x: midX + offset, y: start.y }, { x: midX + offset, y: end.y }, end));
     return chooseLowestScoreRoute(candidates, previousSegments, obstacles);
   }
 
   if (Math.abs(verticalDelta) < 26) {
-    const xOffsets = [0, 46, -46, 92, -92];
+    const xOffsets = fastMode ? [0, 92, -92] : [0, 46, -46, 92, -92];
     const candidates = xOffsets.map((offset) => buildRouteSegments(start, startLead, { x: midX + offset, y: start.y }, { x: midX + offset, y: end.y }, endLead, end));
     candidates.push(buildRouteSegments(start, startLead, endLead, end));
     return chooseLowestScoreRoute(candidates, previousSegments, obstacles);
@@ -1995,8 +2011,10 @@ function buildDiagramRouteSegments({ start, end, startLead, endLead, midX, laneI
   const arrivalOffset = -directionY * (24 + laneIndex * 12);
   const departureY = start.y + departureOffset;
   const arrivalY = end.y + arrivalOffset;
-  const xOffsets = [0, 54, -54, 108, -108];
-  const spineYs = [departureY, arrivalY, (departureY + arrivalY) / 2, start.y + directionY * 54, end.y - directionY * 54];
+  const xOffsets = fastMode ? [0, 108, -108] : [0, 54, -54, 108, -108];
+  const spineYs = fastMode
+    ? [departureY, arrivalY, (departureY + arrivalY) / 2]
+    : [departureY, arrivalY, (departureY + arrivalY) / 2, start.y + directionY * 54, end.y - directionY * 54];
   const candidates = [];
   xOffsets.forEach((xOffset) => {
     spineYs.forEach((spineY) => {
@@ -2187,11 +2205,11 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function placeRouteLabel(segments, labelWidth, labelBoxes, cableSegments = [], preferredSide = 1, bounds = null, nodeBoxes = []) {
+function placeRouteLabel(segments, labelWidth, labelBoxes, cableSegments = [], preferredSide = 1, bounds = null, nodeBoxes = [], fastMode = false) {
   const viableSegments = segments.filter((segment) => segmentLength(segment) >= 22);
   const orderedSegments = viableSegments.length ? viableSegments : segments;
-  const fractions = [0.5, 0.42, 0.58, 0.32, 0.68, 0.22, 0.78, 0.12, 0.88];
-  const offsets = [0, -20, 20, -40, 40, -64, 64, -88, 88];
+  const fractions = fastMode ? [0.5, 0.32, 0.68] : [0.5, 0.42, 0.58, 0.32, 0.68, 0.22, 0.78, 0.12, 0.88];
+  const offsets = fastMode ? [0, -32, 32] : [0, -20, 20, -40, 40, -64, 64, -88, 88];
   let best = null;
 
   orderedSegments.forEach((segment) => {
@@ -3443,6 +3461,16 @@ function saveConnection(event) {
 
 function exportJson() {
   downloadFile(`${slug(project.name)}-systemcore.json`, JSON.stringify(projectSnapshot(), null, 2), "application/json");
+}
+
+function buildDiagramCapacityNotice() {
+  if (activeOutput !== "diagram") return "";
+  const connectionCount = drawableDiagramConnectionCount();
+  if (connectionCount <= 80) return "";
+  const message = connectionCount > 160
+    ? "This is an extreme block diagram. SystemCore is using its fastest deterministic layout; split the design by room or system for a more readable drawing."
+    : "This is a dense block diagram. SystemCore is evaluating fewer layout alternatives to keep generation responsive; split by room or system if the drawing becomes difficult to read.";
+  return `<div class="output-capacity-notice"><strong>${connectionCount} drawable connections.</strong> ${message}</div>`;
 }
 
 function preparePrintLayout() {
