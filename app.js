@@ -1030,7 +1030,7 @@ function buildDiagramSvg(options = {}) {
       (route) => `
         <g>
           <rect x="${route.labelX - route.labelWidth / 2}" y="${route.labelY - 14}" width="${route.labelWidth}" height="18" rx="5" fill="#fbfcfa" stroke="#d6ddd8" />
-          <text x="${route.labelX}" y="${route.labelY}" font-size="12" fill="#44514a" text-anchor="middle">${escapeHtml(route.connection.label)}</text>
+          <text x="${route.labelX}" y="${route.labelY}" font-size="13" fill="#34423b" text-anchor="middle">${escapeHtml(route.connection.label)}</text>
         </g>
       `
     )
@@ -1050,16 +1050,16 @@ function buildDiagramSvg(options = {}) {
       const contentX = position.x + Math.max(22, leftPortReserve + 18);
       const contentRightPadding = Math.max(18, rightPortReserve + 18);
       const contentWidth = Math.max(80, position.x + position.w - contentX - contentRightPadding);
-      const titleLines = wrapTextLines(device.name, Math.floor(contentWidth / 8.5), 1);
-      const subtitleLines = wrapTextLines(`${device.category} / ${deviceLocation(device)}`, Math.floor(contentWidth / 6.2), 2);
-      const modelLines = wrapTextLines(device.model || "Model TBC", Math.floor(contentWidth / 5.8), 1);
+      const titleLines = wrapTextLines(device.name, Math.floor(contentWidth / 9.5), 1);
+      const subtitleLines = wrapTextLines(`${device.category} / ${deviceLocation(device)}`, Math.floor(contentWidth / 6.8), 2);
+      const modelLines = wrapTextLines(device.model || "Model TBC", Math.floor(contentWidth / 6.3), 1);
       const portSvg = position.ports
         .map(
           (port) => `
           <g>
             <rect x="${port.labelRectX}" y="${port.labelRectY}" width="${port.labelWidth}" height="${port.labelHeight}" rx="5" fill="#fbfcfa" stroke="#cbd5cf" />
             <circle cx="${port.x}" cy="${port.y}" r="6" fill="#ffffff" stroke="${deviceColor}" stroke-width="${Math.max(2.4, deviceLine)}" />
-            <text x="${port.labelX}" y="${port.labelY}" font-size="10" font-weight="800" fill="#26352f" text-anchor="${port.textAnchor}">${escapeHtml(port.port)}</text>
+            <text x="${port.labelX}" y="${port.labelY}" font-size="11" font-weight="800" fill="#1f2d27" text-anchor="${port.textAnchor}" dominant-baseline="middle">${escapeHtml(port.port)}</text>
           </g>
         `
         )
@@ -1068,9 +1068,9 @@ function buildDiagramSvg(options = {}) {
         <g>
           <rect x="${position.x}" y="${position.y}" width="${position.w}" height="${position.h}" rx="8" fill="#ffffff" stroke="#cbd5cf" stroke-width="${deviceLine}" />
           <rect x="${position.x}" y="${position.y}" width="10" height="${position.h}" rx="5" fill="${deviceColor}" />
-          ${svgTextLines(titleLines, contentX, position.y + 28, 16, 18, { weight: 800, fill: "#17211d" })}
-          ${svgTextLines(subtitleLines, contentX, position.y + 50, 12, 15, { fill: "#65726c" })}
-          ${svgTextLines(modelLines, contentX, position.y + 82, 11, 14, { fill: "#65726c" })}
+          ${svgTextLines(titleLines, contentX, position.y + 29, 18, 20, { weight: 800, fill: "#111b17" })}
+          ${svgTextLines(subtitleLines, contentX, position.y + 52, 13, 16, { fill: "#44514a" })}
+          ${svgTextLines(modelLines, contentX, position.y + 88, 12, 15, { fill: "#4f5d56" })}
           ${portSvg}
         </g>
       `;
@@ -1084,7 +1084,7 @@ function buildDiagramSvg(options = {}) {
   const titleY = trimmed ? trimmed.titleY : 34;
 
   return `
-    <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="${viewBox}" role="img" aria-label="Generated system block diagram">
+    <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="${viewBox}" role="img" aria-label="Generated system block diagram" text-rendering="geometricPrecision" shape-rendering="geometricPrecision">
       <rect x="${fullBounds.x}" y="${fullBounds.y}" width="${fullBounds.w}" height="${fullBounds.h}" fill="#fbfcfa" />
       <text x="${titleX}" y="${titleY}" font-size="18" font-weight="800" fill="#17211d">${escapeHtml(project.name)} block diagram</text>
       ${cablePathSvg}
@@ -2442,7 +2442,7 @@ function buildDiagramEndpoints(connections, positionMap) {
         labelRectX: isRightSide ? point.x - labelWidth - 10 : point.x + 10,
         labelRectY: point.y - labelHeight / 2,
         labelX: isRightSide ? point.x - 16 : point.x + 16,
-        labelY: point.y + 4,
+        labelY: point.y,
         textAnchor: isRightSide ? "end" : "start"
       };
       if (!portsByDevice.has(deviceId)) portsByDevice.set(deviceId, []);
