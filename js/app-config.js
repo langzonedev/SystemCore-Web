@@ -1,6 +1,6 @@
 globalThis.SystemCoreConfig = Object.freeze({
   APP_NAME: "SystemCore",
-  APP_VERSION: "0.5.7",
+  APP_VERSION: "0.5.8",
   PROJECT_SCHEMA_VERSION: "1.0",
   STORAGE_KEY: "systemcore.project.v1",
   LEGACY_STORAGE_KEYS: ["trueru.project.v1", "systemcore.prototype.v2"],

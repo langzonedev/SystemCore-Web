@@ -1077,17 +1077,34 @@ function buildDiagramSvg(options = {}) {
     })
     .join("");
 
-  const viewBox = trimToContent ? diagramContentViewBox(layout) : `0 0 ${layout.width} ${layout.height}`;
+  const fullBounds = diagramFullBounds(layout);
+  const viewBox = trimToContent ? diagramContentViewBox(layout) : boundsViewBox(fullBounds);
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="${viewBox}" role="img" aria-label="Generated system block diagram">
-      <rect width="${layout.width}" height="${layout.height}" fill="#fbfcfa" />
+      <rect x="${fullBounds.x}" y="${fullBounds.y}" width="${fullBounds.w}" height="${fullBounds.h}" fill="#fbfcfa" />
       <text x="34" y="34" font-size="18" font-weight="800" fill="#17211d">${escapeHtml(project.name)} block diagram</text>
       ${cablePathSvg}
       ${nodeSvg}
       ${cableLabelSvg}
     </svg>
   `;
+}
+
+function diagramFullBounds(layout) {
+  const routePoints = layout.routes.flatMap((route) => route.segments.flatMap((segment) => [
+    { x: segment.x1, y: segment.y1 },
+    { x: segment.x2, y: segment.y2 }
+  ]));
+  const minX = Math.min(0, ...routePoints.map((point) => point.x - 24));
+  const minY = Math.min(0, ...routePoints.map((point) => point.y - 24));
+  const maxX = Math.max(layout.width, ...routePoints.map((point) => point.x + 24));
+  const maxY = Math.max(layout.height, ...routePoints.map((point) => point.y + 24));
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+}
+
+function boundsViewBox(bounds) {
+  return `${Math.round(bounds.x)} ${Math.round(bounds.y)} ${Math.round(bounds.w)} ${Math.round(bounds.h)}`;
 }
 
 function diagramContentViewBox(layout) {
@@ -1106,10 +1123,10 @@ function diagramContentViewBox(layout) {
       });
     });
   });
-  const minX = Math.max(0, Math.min(...boxes.map((box) => box.x)) - 46);
-  const minY = Math.max(0, Math.min(...boxes.map((box) => box.y)) - 42);
-  const maxX = Math.min(layout.width, Math.max(...boxes.map((box) => box.x + box.w)) + 46);
-  const maxY = Math.min(layout.height, Math.max(...boxes.map((box) => box.y + box.h)) + 46);
+  const minX = Math.min(...boxes.map((box) => box.x)) - 46;
+  const minY = Math.min(...boxes.map((box) => box.y)) - 42;
+  const maxX = Math.max(...boxes.map((box) => box.x + box.w)) + 46;
+  const maxY = Math.max(...boxes.map((box) => box.y + box.h)) + 46;
   return `${Math.round(minX)} ${Math.round(minY)} ${Math.round(Math.max(240, maxX - minX))} ${Math.round(Math.max(180, maxY - minY))}`;
 }
 
