@@ -2431,6 +2431,7 @@ function buildDiagramEndpoints(connections, positionMap) {
       const labelWidth = Math.max(44, displayPort.length * 6.4 + 14);
       const labelHeight = 18;
       const isRightSide = side === "right";
+      const labelOpticalOffsetY = device?.category === "Patch Panel" && entry.face === "Rear" ? 1.2 : 0;
       const portMarker = {
         ...point,
         port: displayPort,
@@ -2442,7 +2443,8 @@ function buildDiagramEndpoints(connections, positionMap) {
         labelRectX: isRightSide ? point.x - labelWidth - 10 : point.x + 10,
         labelRectY: point.y - labelHeight / 2,
         labelX: isRightSide ? point.x - 16 : point.x + 16,
-        labelY: point.y,
+        labelY: point.y + labelOpticalOffsetY,
+        labelOpticalOffsetY,
         textAnchor: isRightSide ? "end" : "start"
       };
       if (!portsByDevice.has(deviceId)) portsByDevice.set(deviceId, []);
