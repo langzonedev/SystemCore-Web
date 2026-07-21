@@ -1078,12 +1078,15 @@ function buildDiagramSvg(options = {}) {
     .join("");
 
   const fullBounds = diagramFullBounds(layout);
-  const viewBox = trimToContent ? diagramContentViewBox(layout) : boundsViewBox(fullBounds);
+  const trimmed = trimToContent ? diagramTrimGeometry(layout) : null;
+  const viewBox = trimmed ? boundsViewBox(trimmed.bounds) : boundsViewBox(fullBounds);
+  const titleX = trimmed ? trimmed.titleX : 34;
+  const titleY = trimmed ? trimmed.titleY : 34;
 
   return `
     <svg xmlns="http://www.w3.org/2000/svg" class="system-diagram" viewBox="${viewBox}" role="img" aria-label="Generated system block diagram">
       <rect x="${fullBounds.x}" y="${fullBounds.y}" width="${fullBounds.w}" height="${fullBounds.h}" fill="#fbfcfa" />
-      <text x="34" y="34" font-size="18" font-weight="800" fill="#17211d">${escapeHtml(project.name)} block diagram</text>
+      <text x="${titleX}" y="${titleY}" font-size="18" font-weight="800" fill="#17211d">${escapeHtml(project.name)} block diagram</text>
       ${cablePathSvg}
       ${nodeSvg}
       ${cableLabelSvg}
@@ -1107,9 +1110,8 @@ function boundsViewBox(bounds) {
   return `${Math.round(bounds.x)} ${Math.round(bounds.y)} ${Math.round(bounds.w)} ${Math.round(bounds.h)}`;
 }
 
-function diagramContentViewBox(layout) {
+function diagramTrimGeometry(layout) {
   const boxes = [
-    { x: 20, y: 12, w: Math.max(260, project.name.length * 10 + 150), h: 34 },
     ...layout.positions,
     ...layout.routes.map((route) => route.labelBox)
   ];
@@ -1123,11 +1125,27 @@ function diagramContentViewBox(layout) {
       });
     });
   });
-  const minX = Math.min(...boxes.map((box) => box.x)) - 46;
-  const minY = Math.min(...boxes.map((box) => box.y)) - 42;
+  const contentMinX = Math.min(...boxes.map((box) => box.x));
+  const contentMinY = Math.min(...boxes.map((box) => box.y));
+  const firstNodeX = Math.min(...layout.positions.map((position) => position.x));
+  const firstNodeY = Math.min(...layout.positions.map((position) => position.y));
+  const titleX = firstNodeX;
+  const titleY = firstNodeY - 30;
+  boxes.push({ x: titleX, y: titleY - 20, w: Math.max(260, project.name.length * 10 + 150), h: 26 });
+  const minX = Math.min(contentMinX, titleX) - 46;
+  const minY = Math.min(contentMinY, titleY - 20) - 24;
   const maxX = Math.max(...boxes.map((box) => box.x + box.w)) + 46;
   const maxY = Math.max(...boxes.map((box) => box.y + box.h)) + 46;
-  return `${Math.round(minX)} ${Math.round(minY)} ${Math.round(Math.max(240, maxX - minX))} ${Math.round(Math.max(180, maxY - minY))}`;
+  return {
+    titleX,
+    titleY,
+    bounds: {
+      x: minX,
+      y: minY,
+      w: Math.max(240, maxX - minX),
+      h: Math.max(180, maxY - minY)
+    }
+  };
 }
 
 function buildTemplatePlaceholderSvg() {
