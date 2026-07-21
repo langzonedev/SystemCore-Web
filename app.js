@@ -1158,10 +1158,12 @@ function buildSheetSvg(contentSvg, drawingType = "Drawing") {
   const drawingH = sheet.height - drawingY - titleBlockH - margin - 18;
   const parsed = parseSvgContent(contentSvg);
   const contentPad = template.sheetSize === "A4" ? 24 : 30;
+  const noteLines = String(template.notes || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean).slice(0, 4);
+  const notesReserveH = noteLines.length ? 34 + noteLines.length * 15 + 36 : 0;
   const contentFrameX = drawingX + contentPad;
   const contentFrameY = drawingY + contentPad;
   const contentFrameW = Math.max(100, drawingW - contentPad * 2);
-  const contentFrameH = Math.max(100, drawingH - contentPad * 2);
+  const contentFrameH = Math.max(100, drawingH - contentPad * 2 - notesReserveH);
   const scale = Math.min(contentFrameW / parsed.width, contentFrameH / parsed.height);
   const contentW = parsed.width * scale;
   const contentH = parsed.height * scale;
@@ -1519,7 +1521,7 @@ function buildDiagramLayoutCandidate(layoutVariant) {
   const nodeW = 320;
   const columns = buildDiagramColumns(devices, drawableConnections, layoutVariant);
   const columnCount = columns.groups.length;
-  const baseWidth = columnCount > 2 ? 1540 : 1240;
+  const baseWidth = columns.rackAware || columnCount > 2 ? 1540 : 1240;
   const width = Math.max(baseWidth, baseWidth + Math.max(0, maxConnectedPorts - 4) * 30 + Math.max(0, drawableConnections.length - 8) * 10);
   const minNodeH = 104;
   const top = 74;
@@ -1579,7 +1581,7 @@ function buildDiagramLayoutCandidate(layoutVariant) {
     const startLead = { x: start.x + startDirection * startLeadLength, y: start.y };
     const endLead = { x: end.x + endDirection * endLeadLength, y: end.y };
     const midX = sameColumn
-      ? start.x + startDirection * (120 + routeLaneIndex * 58)
+      ? start.x + startDirection * (160 + routeLaneIndex * 64)
       : (startLead.x + endLead.x) / 2 + pairOffset + (startLaneIndex - endLaneIndex) * 12;
     const obstacles = positions.filter((position) => ![connection.fromDevice, connection.toDevice].includes(position.id));
     const segments = buildDiagramRouteSegments({
@@ -1804,7 +1806,8 @@ function buildRackAwareDiagramColumns(devices, layoutVariant, degree) {
   if (rackGroups.length !== 2) return null;
   return {
     groups: rackGroups.map((group) => orderRackClusterDevices(group.devices, layoutVariant, degree)),
-    hubId: ""
+    hubId: "",
+    rackAware: true
   };
 }
 
@@ -2047,7 +2050,10 @@ function buildDiagramRouteSegments({ start, end, startLead, endLead, midX, laneI
   }
 
   if (sameColumn) {
-    const xOffsets = fastMode ? [0, 116, -116] : [0, 58, -58, 116, -116, 174, -174];
+    const outward = sideDirection(start.side);
+    const xOffsets = fastMode
+      ? [0, outward * 116, outward * 232]
+      : [0, outward * 58, outward * 116, outward * 174, outward * 232];
     const candidates = xOffsets.map((offset) => buildRouteSegments(start, { x: midX + offset, y: start.y }, { x: midX + offset, y: end.y }, end));
     return chooseLowestScoreRoute(candidates, previousSegments, obstacles);
   }
@@ -2123,7 +2129,10 @@ function routeScore(segments, previousSegments = [], obstacles = []) {
   const intrusions = segments.reduce((total, segment) => {
     return total + obstacles.filter((obstacle) => segmentIntersectsBox(segment, obstacle, 10)).length;
   }, 0);
-  return length + bends * 28 + crossings * 180 + overlaps * 760 + intrusions * 3600;
+  const closePasses = segments.reduce((total, segment) => {
+    return total + obstacles.filter((obstacle) => !segmentIntersectsBox(segment, obstacle, 10) && segmentIntersectsBox(segment, obstacle, 32)).length;
+  }, 0);
+  return length + bends * 28 + crossings * 180 + overlaps * 760 + closePasses * 650 + intrusions * 3600;
 }
 
 function parallelOverlapPenalty(segment, previousSegments = []) {
