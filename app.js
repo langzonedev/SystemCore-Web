@@ -2027,8 +2027,10 @@ function alignBundledDiagramPairs(positions, connections, fixedIds, top, minGap)
   pairs.forEach((entries) => {
     if (entries.length < 2 && Math.min(degree.get(entries[0].from.id) || 0, degree.get(entries[0].to.id) || 0) > 1) return;
     const averageDelta = entries.reduce((total, entry) => total + entry.delta, 0) / entries.length;
-    if (Math.abs(averageDelta) < 8) return;
     const { from, to } = entries[0];
+    const pairedPatchPanels = getDevice(from.id)?.category === "Patch Panel" && getDevice(to.id)?.category === "Patch Panel";
+    const alignmentTolerance = pairedPatchPanels ? 0.1 : 8;
+    if (Math.abs(averageDelta) < alignmentTolerance) return;
     const fromFixed = fixedIds.has(from.id);
     const toFixed = fixedIds.has(to.id);
 
