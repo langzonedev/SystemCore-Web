@@ -2135,7 +2135,7 @@ function chooseBestFacingRoute(start, end, previousSegments = [], obstacles = []
   const verticalDelta = Math.abs(end.y - start.y);
   const candidates = [];
 
-  if (verticalDelta < 10) {
+  if (verticalDelta < 0.1) {
     candidates.push(buildRouteSegments(start, end));
   }
 
