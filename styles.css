@@ -517,9 +517,13 @@ button {
 
 .style-preview-cable {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 120px 90px;
+  grid-template-columns: minmax(220px, 440px) 88px 72px;
   gap: 12px;
   align-items: center;
+}
+
+.style-preview-cable svg {
+  max-width: 440px;
 }
 
 .style-preview-cable strong,
