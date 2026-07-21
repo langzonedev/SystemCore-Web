@@ -1234,8 +1234,13 @@ tr:hover td {
 
 @media print {
   @page {
-    size: A3 landscape;
-    margin: 10mm;
+    margin: 5mm;
+  }
+
+  html,
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   body.print-output-only {
@@ -1307,20 +1312,45 @@ tr:hover td {
 
   body.print-output-only .system-diagram {
     width: 100%;
-    max-height: 277mm;
+    max-height: var(--print-sheet-height);
   }
 
   body.print-output-only .drawing-sheet {
-    width: 100%;
+    display: block;
+    width: var(--print-sheet-width);
+    height: var(--print-sheet-height);
     min-width: 0;
-    max-height: 277mm;
+    max-width: none;
+    max-height: none;
   }
 
   body.print-output-only .elevation-svg {
     width: 100%;
     min-width: 0;
-    max-height: 252mm;
+    max-height: var(--print-sheet-height);
     object-fit: contain;
+  }
+
+  body.print-output-only svg {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    shape-rendering: geometricPrecision;
+  }
+
+  body.print-output-only svg [fill="#fbfcfa"],
+  body.print-output-only svg [fill="#f8faf7"] {
+    fill: #ffffff !important;
+  }
+
+  body.print-output-only svg [stroke="#d6ddd8"],
+  body.print-output-only svg [stroke="#cbd5cf"] {
+    stroke: #65726c !important;
+    stroke-width: 1.35 !important;
+  }
+
+  body.print-output-only svg text[fill="#65726c"],
+  body.print-output-only svg text[fill="#44514a"] {
+    fill: #26312c !important;
   }
 
   body.print-output-only table {

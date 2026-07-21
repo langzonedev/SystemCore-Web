@@ -1156,7 +1156,7 @@ function buildSheetSvg(contentSvg, drawingType = "Drawing") {
   const drawingW = sheet.width - margin * 2 - 28;
   const drawingH = sheet.height - drawingY - titleBlockH - margin - 18;
   const parsed = parseSvgContent(contentSvg);
-  const contentPad = template.sheetSize === "A4" ? 42 : 52;
+  const contentPad = template.sheetSize === "A4" ? 24 : 30;
   const contentFrameX = drawingX + contentPad;
   const contentFrameY = drawingY + contentPad;
   const contentFrameW = Math.max(100, drawingW - contentPad * 2);
@@ -3445,6 +3445,29 @@ function exportJson() {
   downloadFile(`${slug(project.name)}-systemcore.json`, JSON.stringify(projectSnapshot(), null, 2), "application/json");
 }
 
+function preparePrintLayout() {
+  const template = normalizeTemplate(project.template);
+  const landscape = template.orientation === "Landscape";
+  const dimensions = template.sheetSize === "A4" ? { width: 210, height: 297 } : { width: 297, height: 420 };
+  const pageWidth = landscape ? dimensions.height : dimensions.width;
+  const pageHeight = landscape ? dimensions.width : dimensions.height;
+  const pageMargin = 5;
+  const style = document.getElementById("systemcore-print-page") || document.createElement("style");
+  style.id = "systemcore-print-page";
+  style.textContent = `@page { size: ${template.sheetSize} ${template.orientation.toLowerCase()}; margin: ${pageMargin}mm; }`;
+  document.head.appendChild(style);
+  document.body.style.setProperty("--print-sheet-width", `${pageWidth - pageMargin * 2}mm`);
+  document.body.style.setProperty("--print-sheet-height", `${pageHeight - pageMargin * 2}mm`);
+  document.body.classList.add("print-output-only");
+}
+
+function clearPrintLayout() {
+  document.body.classList.remove("print-output-only");
+  document.body.style.removeProperty("--print-sheet-width");
+  document.body.style.removeProperty("--print-sheet-height");
+  document.getElementById("systemcore-print-page")?.remove();
+}
+
 function validateImportedProject(input) {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("That file does not contain a SystemCore project");
@@ -4235,11 +4258,11 @@ els.templateOutputToggle.addEventListener("change", (event) => {
   renderOutput();
 });
 document.getElementById("print-output").addEventListener("click", () => {
-  document.body.classList.add("print-output-only");
+  preparePrintLayout();
   window.print();
-  window.setTimeout(() => document.body.classList.remove("print-output-only"), 500);
+  window.setTimeout(clearPrintLayout, 500);
 });
-window.addEventListener("afterprint", () => document.body.classList.remove("print-output-only"));
+window.addEventListener("afterprint", clearPrintLayout);
 els.roomForm.addEventListener("submit", saveRoom);
 els.rackForm.addEventListener("submit", saveRack);
 els.deviceForm.addEventListener("submit", saveDevice);
