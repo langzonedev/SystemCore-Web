@@ -1733,6 +1733,8 @@ function buildDiagramColumns(devices, connections, layoutVariant = 0) {
     if (degree.has(connection.fromDevice)) degree.set(connection.fromDevice, degree.get(connection.fromDevice) + 1);
     if (degree.has(connection.toDevice)) degree.set(connection.toDevice, degree.get(connection.toDevice) + 1);
   });
+  const rackAwareColumns = buildRackAwareDiagramColumns(devices, layoutVariant, degree);
+  if (rackAwareColumns) return rackAwareColumns;
   const hub = devices.reduce((best, device) => {
     const difference = (degree.get(device.id) || 0) - (degree.get(best.id) || 0);
     if (difference > 0) return device;
@@ -1789,6 +1791,53 @@ function buildDiagramColumns(devices, connections, layoutVariant = 0) {
   return { groups, hubId: hub.id };
 }
 
+function buildRackAwareDiagramColumns(devices, layoutVariant, degree) {
+  const rackIds = [...new Set(devices.map((device) => device.rackId).filter(Boolean))];
+  if (rackIds.length !== 2 || devices.some((device) => !device.rackId)) return null;
+  const rackGroups = rackIds
+    .map((rackId) => ({
+      rackId,
+      devices: devices.filter((device) => device.rackId === rackId)
+    }))
+    .filter((group) => group.devices.length >= 2)
+    .sort((first, second) => diagramRackSortKey(first.rackId).localeCompare(diagramRackSortKey(second.rackId)));
+  if (rackGroups.length !== 2) return null;
+  return {
+    groups: rackGroups.map((group) => orderRackClusterDevices(group.devices, layoutVariant, degree)),
+    hubId: ""
+  };
+}
+
+function orderRackClusterDevices(devices, layoutVariant, degree) {
+  return [...devices].sort((first, second) => {
+    const priorityDifference = rackClusterPriority(first) - rackClusterPriority(second);
+    if (priorityDifference) return priorityDifference;
+    if (layoutVariant === 3) {
+      const degreeDifference = (degree.get(second.id) || 0) - (degree.get(first.id) || 0);
+      if (degreeDifference) return degreeDifference;
+    }
+    const nameOrder = first.name.localeCompare(second.name, undefined, { numeric: true, sensitivity: "base" });
+    return layoutVariant === 5 ? -nameOrder : nameOrder;
+  });
+}
+
+function rackClusterPriority(device) {
+  return {
+    "Patch Panel": 0,
+    "Network Switch": 1,
+    Server: 2,
+    Storage: 3,
+    Display: 4,
+    "Media Converter": 5,
+    Power: 6
+  }[device.category] ?? 5;
+}
+
+function diagramRackSortKey(rackId) {
+  const rack = getRack(rackId);
+  return `${rack?.roomId || ""}:${rack?.name || rackId}`;
+}
+
 function orderDiagramDevices(devices, layoutVariant, degree = new Map()) {
   const ordered = [...devices];
   const variant = Math.max(0, Math.min(5, Number(layoutVariant) || 0));
@@ -1843,10 +1892,13 @@ function cableFacingPriority(device) {
 
 function diagramColumnXs(columnCount, width, nodeW) {
   if (columnCount <= 1) return [(width - nodeW) / 2];
-  if (columnCount === 2) return [80, width - nodeW - 80];
-  const left = 70;
-  const right = width - nodeW - 70;
-  const middleStep = (right - left) / (columnCount - 1);
+  if (columnCount === 2) {
+    const sideGutter = 80 + Math.min(360, Math.max(0, width - 1240) / 2);
+    return [sideGutter, width - nodeW - sideGutter];
+  }
+  const left = 70 + Math.min(360, Math.max(0, width - 1540) / 2);
+  const adjustedRight = width - nodeW - left;
+  const middleStep = (adjustedRight - left) / (columnCount - 1);
   return Array.from({ length: columnCount }, (_, index) => left + middleStep * index);
 }
 
@@ -2373,10 +2425,15 @@ function addEndpointGroup(groups, portEntries, deviceId, port, face, side, endpo
 
 function connectionSides(from, to, connection = null, panelOrientations = new Map()) {
   const geometric = geometricConnectionSides(from, to, connection);
-  return {
-    fromSide: preferredEndpointSide(connection?.fromDevice, connection?.fromFace, geometric.fromSide, panelOrientations),
-    toSide: preferredEndpointSide(connection?.toDevice, connection?.toFace, geometric.toSide, panelOrientations)
-  };
+  let fromSide = preferredEndpointSide(connection?.fromDevice, connection?.fromFace, geometric.fromSide, panelOrientations);
+  let toSide = preferredEndpointSide(connection?.toDevice, connection?.toFace, geometric.toSide, panelOrientations);
+  if (Math.abs(from.x - to.x) < 10) {
+    const fromPanelOriented = getDevice(connection?.fromDevice)?.category === "Patch Panel" && panelOrientations.has(connection?.fromDevice);
+    const toPanelOriented = getDevice(connection?.toDevice)?.category === "Patch Panel" && panelOrientations.has(connection?.toDevice);
+    if (fromPanelOriented && !toPanelOriented) toSide = fromSide;
+    if (toPanelOriented && !fromPanelOriented) fromSide = toSide;
+  }
+  return { fromSide, toSide };
 }
 
 function geometricConnectionSides(from, to, connection = null) {
